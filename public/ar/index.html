@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MindLink - Memory Assistant</title>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; }
+
+    /* 2D overlay UI (visible before entering VR and as fallback) */
+    .overlay {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    .overlay * { pointer-events: auto; }
+
+    #talkBtn2D {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      border: 3px solid rgba(74, 111, 165, 0.6);
+      background: radial-gradient(circle, #4a6fa5, #2a4a75);
+      color: white;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      touch-action: none;
+      transition: all 0.2s;
+    }
+
+    #talkBtn2D.recording {
+      background: radial-gradient(circle, #e74c3c, #c0392b);
+      border-color: rgba(231, 76, 60, 0.6);
+      transform: scale(1.1);
+    }
+
+    #status2D {
+      color: white;
+      font-size: 0.85rem;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+      text-align: center;
+    }
+
+    .mode-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 999;
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 20px;
+      color: white;
+      font-size: 0.8rem;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+    }
+
+    .listening-badge {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 999;
+      padding: 6px 14px;
+      background: rgba(46, 125, 50, 0.25);
+      border: 1px solid rgba(46, 125, 50, 0.4);
+      border-radius: 20px;
+      font-size: 0.75rem;
+      color: #66bb6a;
+      display: none;
+    }
+
+    .listening-badge.active { display: block; }
+  </style>
+</head>
+<body>
+  <!-- 2D Overlay Controls -->
+  <div class="listening-badge" id="listeningBadge">Live Listening</div>
+  <button class="mode-toggle" id="modeToggle">Show My Memories</button>
+
+  <div class="overlay">
+    <div id="status2D"></div>
+    <button id="talkBtn2D">Hold to Talk</button>
+  </div>
+
+  <!-- A-Frame Scene -->
+  <a-scene
+    webxr="requiredFeatures: local-floor; optionalFeatures: hand-tracking, bounded-floor"
+    renderer="alpha: true; antialias: true; colorManagement: true"
+    background="transparent: true"
+    vr-mode-ui="enterVRButton: #enterVRBtn"
+  >
+    <a-assets>
+      <a-mixin id="card-bg" material="shader: flat; transparent: true; opacity: 0.88" geometry="primitive: plane"></a-mixin>
+    </a-assets>
+
+    <!-- ==================== QUESTION MODE ==================== -->
+    <a-entity id="questionMode" visible="true">
+
+      <!-- Main answer card -->
+      <a-entity id="answerCard" position="0 1.55 -1.8" visible="false">
+        <!-- Card background with rounded look -->
+        <a-plane width="1.4" height="0.65" color="#0d1b3e"
+          material="shader: flat; transparent: true; opacity: 0.92"
+          ></a-plane>
+        <!-- Subtle border glow -->
+        <a-plane width="1.42" height="0.67" color="#4a90d9" position="0 0 -0.002"
+          material="shader: flat; transparent: true; opacity: 0.3"
+          ></a-plane>
+        <!-- Header -->
+        <a-text id="answerHeader" value="MindLink" position="-0.6 0.22 0.01"
+          color="#4a90d9" font="roboto" width="1.2" anchor="left"
+          ></a-text>
+        <!-- Answer text -->
+        <a-text id="answerText" value="" position="-0.6 -0.02 0.01"
+          color="#e0e8f5" font="roboto" width="1.2" anchor="left" baseline="top"
+          wrap-count="50"
+          ></a-text>
+      </a-entity>
+
+      <!-- People cards container (spawned dynamically) -->
+      <a-entity id="peopleCards" position="0 0.85 -1.8"></a-entity>
+
+      <!-- Animated mic indicator in 3D -->
+      <a-entity id="micIndicator3D" position="0 1.0 -1.5" visible="false">
+        <a-ring color="#4a90d9" radius-inner="0.06" radius-outer="0.08"
+          material="shader: flat; transparent: true; opacity: 0.8"
+          ></a-ring>
+        <a-text value="Listening..." position="0 -0.12 0" color="#4a90d9"
+          font="roboto" width="1" align="center"
+          ></a-text>
+      </a-entity>
+
+      <!-- Thinking indicator -->
+      <a-entity id="thinkingIndicator" position="0 1.55 -1.8" visible="false">
+        <a-text value="Thinking..." color="#4a90d9" font="roboto" width="1.5"
+          align="center"
+          animation="property: material.opacity; from: 0.4; to: 1; dur: 800; loop: true; dir: alternate"
+          ></a-text>
+      </a-entity>
+
+    </a-entity>
+
+    <!-- ==================== CONSTELLATION MODE ==================== -->
+    <a-entity id="constellationMode" visible="false" position="0 1.5 -2">
+
+      <!-- Central label -->
+      <a-entity id="constellationTitle" position="0 1.2 0">
+        <a-text value="Eleanor's Memories" color="#8ab4f8" font="roboto"
+          width="3" align="center"
+          ></a-text>
+      </a-entity>
+
+      <!-- Memory nodes container (spawned dynamically) -->
+      <a-entity id="memoryNodes"></a-entity>
+
+      <!-- Connection lines container -->
+      <a-entity id="memoryEdges"></a-entity>
+
+      <!-- Detail panel (shows when a node is clicked) -->
+      <a-entity id="detailPanel" position="0 0 1" visible="false">
+        <a-plane width="1.6" height="0.8" color="#0d1b3e"
+          material="shader: flat; transparent: true; opacity: 0.92"
+          ></a-plane>
+        <a-plane width="1.62" height="0.82" color="#4a90d9" position="0 0 -0.002"
+          material="shader: flat; transparent: true; opacity: 0.25"
+          ></a-plane>
+        <a-text id="detailTitle" value="" position="-0.7 0.28 0.01"
+          color="#4a90d9" font="roboto" width="1.4" anchor="left"
+          ></a-text>
+        <a-text id="detailContent" value="" position="-0.7 0.1 0.01"
+          color="#e0e8f5" font="roboto" width="1.4" anchor="left" baseline="top"
+          wrap-count="55"
+          ></a-text>
+      </a-entity>
+
+    </a-entity>
+
+    <!-- Camera -->
+    <a-entity camera look-controls position="0 1.6 0">
+      <a-cursor
+        color="#4a90d9"
+        fuse="false"
+        raycaster="objects: .clickable"
+        ></a-cursor>
+    </a-entity>
+
+  </a-scene>
+
+  <script src="/shared/recorder.js"></script>
+  <script src="ar.js"></script>
+</body>
+</html>

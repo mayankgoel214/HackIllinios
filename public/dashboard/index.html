@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MindLink - Caretaker Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <a href="/" class="logo">MindLink</a>
+      <span class="patient-name">Eleanor Hayes</span>
+    </header>
+    <main>
+      <section class="chat-panel">
+        <div id="messages" class="messages"></div>
+        <div class="input-bar">
+          <input type="text" id="textInput" placeholder="Tell me about Eleanor's life..." autocomplete="off">
+          <button id="micBtn" class="mic-btn" title="Hold to record voice">&#127908;</button>
+          <button id="sendBtn" class="send-btn">Send</button>
+        </div>
+      </section>
+      <section class="memories-panel">
+        <div id="alertsSection" class="alerts-section">
+          <h2>Alerts</h2>
+          <div id="alertsList" class="alerts-list"></div>
+        </div>
+        <h2>Stored Memories</h2>
+        <div id="memoriesList" class="memories-list">
+          <p class="empty-state">Memories will appear here as you chat...</p>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/shared/recorder.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>
